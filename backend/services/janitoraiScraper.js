@@ -1,4 +1,3 @@
-import puppeteer from 'puppeteer';
 import { validateJanitorAIUrl } from '../utils/validators.js';
 import { PUPPETEER_CONFIG } from '../config/constants.js';
 import { logInfo, logError, logWarn } from '../utils/logger.js';
@@ -14,11 +13,28 @@ import { sanitizeHtml } from '../utils/helpers.js';
  */
 
 /**
+ * Dynamically import Puppeteer if available
+ * @returns {Promise<any|null>} Puppeteer module or null
+ */
+const loadPuppeteer = async () => {
+  try {
+    const puppeteer = await import('puppeteer');
+    return puppeteer.default;
+  } catch (error) {
+    logWarn('Puppeteer not installed', { error: error.message });
+    return null;
+  }
+};
+
+/**
  * Check if Puppeteer is available
  * @returns {Promise<boolean>} True if Puppeteer can launch
  */
 const isPuppeteerAvailable = async () => {
   try {
+    const puppeteer = await loadPuppeteer();
+    if (!puppeteer) return false;
+
     const browser = await puppeteer.launch({ ...PUPPETEER_CONFIG.LAUNCH_OPTIONS, timeout: 5000 });
     await browser.close();
     return true;
@@ -56,6 +72,12 @@ export const scrapeJanitorAI = async (url) => {
 
   let browser;
   try {
+    // Load Puppeteer dynamically
+    const puppeteer = await loadPuppeteer();
+    if (!puppeteer) {
+      throw new Error('Puppeteer module not available');
+    }
+
     // Launch browser
     browser = await puppeteer.launch(PUPPETEER_CONFIG.LAUNCH_OPTIONS);
     const page = await browser.newPage();
