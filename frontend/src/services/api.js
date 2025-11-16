@@ -105,6 +105,35 @@ export const characterAPI = {
 };
 
 /**
+ * Import API
+ */
+export const importAPI = {
+  /**
+   * Import character from JanitorAI URL
+   * @param {string} url - JanitorAI character URL
+   * @returns {Promise} Import result
+   */
+  fromJanitorAI: async (url) => {
+    return fetchAPI('/import/janitorai', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    });
+  },
+
+  /**
+   * Bulk import from JSON
+   * @param {Array} characters - Array of character objects
+   * @returns {Promise} Import results
+   */
+  fromJSON: async (characters) => {
+    return fetchAPI('/import/json', {
+      method: 'POST',
+      body: JSON.stringify({ characters }),
+    });
+  },
+};
+
+/**
  * Health check
  */
 export const healthCheck = async () => {
@@ -113,5 +142,6 @@ export const healthCheck = async () => {
 
 export default {
   characterAPI,
+  importAPI,
   healthCheck,
 };

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, RefreshCw } from 'lucide-react';
+import { Plus, Search, RefreshCw, Download } from 'lucide-react';
 import { characterAPI } from './services/api';
 import CharacterGrid from './components/characters/CharacterGrid';
 import CharacterModal from './components/modals/CharacterModal';
+import ImportModal from './components/modals/ImportModal';
 
 function App() {
   const [characters, setCharacters] = useState([]);
@@ -10,6 +11,7 @@ function App() {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState(null);
   const [viewingCharacter, setViewingCharacter] = useState(null);
 
@@ -93,6 +95,19 @@ function App() {
     setIsModalOpen(true);
   };
 
+  const handleImportClick = () => {
+    setIsImportModalOpen(true);
+  };
+
+  const handleImportSuccess = async () => {
+    // Reload characters after successful import
+    await loadCharacters();
+  };
+
+  const handleCloseImportModal = () => {
+    setIsImportModalOpen(false);
+  };
+
   // Filter characters by search term
   const filteredCharacters = characters.filter((char) => {
     if (!searchTerm) return true;
@@ -116,13 +131,22 @@ function App() {
                 Privacy-first character management
               </p>
             </div>
-            <button
-              onClick={handleNewCharacter}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded transition-colors"
-            >
-              <Plus size={20} />
-              <span>New Character</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleImportClick}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 px-4 py-2 rounded transition-colors"
+              >
+                <Download size={20} />
+                <span className="hidden sm:inline">Import</span>
+              </button>
+              <button
+                onClick={handleNewCharacter}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded transition-colors"
+              >
+                <Plus size={20} />
+                <span>New Character</span>
+              </button>
+            </div>
           </div>
 
           {/* Search and filters */}
@@ -191,6 +215,13 @@ function App() {
         onClose={handleCloseModal}
         onSave={handleSaveCharacter}
         character={editingCharacter}
+      />
+
+      {/* Import modal */}
+      <ImportModal
+        isOpen={isImportModalOpen}
+        onClose={handleCloseImportModal}
+        onImportSuccess={handleImportSuccess}
       />
 
       {/* View character details modal */}
