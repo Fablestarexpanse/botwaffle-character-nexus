@@ -1,4 +1,3 @@
-import puppeteer from 'puppeteer';
 import { validateJanitorAIUrl } from '../utils/validators.js';
 import { PUPPETEER_CONFIG } from '../config/constants.js';
 import { logInfo, logError, logWarn } from '../utils/logger.js';
@@ -14,11 +13,28 @@ import { sanitizeHtml } from '../utils/helpers.js';
  */
 
 /**
+ * Dynamically import Puppeteer if available
+ * @returns {Promise<any|null>} Puppeteer module or null
+ */
+const loadPuppeteer = async () => {
+  try {
+    const puppeteer = await import('puppeteer');
+    return puppeteer.default;
+  } catch (error) {
+    logWarn('Puppeteer not installed', { error: error.message });
+    return null;
+  }
+};
+
+/**
  * Check if Puppeteer is available
  * @returns {Promise<boolean>} True if Puppeteer can launch
  */
 const isPuppeteerAvailable = async () => {
   try {
+    const puppeteer = await loadPuppeteer();
+    if (!puppeteer) return false;
+
     const browser = await puppeteer.launch({ ...PUPPETEER_CONFIG.LAUNCH_OPTIONS, timeout: 5000 });
     await browser.close();
     return true;
@@ -56,6 +72,12 @@ export const scrapeJanitorAI = async (url) => {
 
   let browser;
   try {
+    // Load Puppeteer dynamically
+    const puppeteer = await loadPuppeteer();
+    if (!puppeteer) {
+      throw new Error('Puppeteer module not available');
+    }
+
     // Launch browser
     browser = await puppeteer.launch(PUPPETEER_CONFIG.LAUNCH_OPTIONS);
     const page = await browser.newPage();
@@ -89,19 +111,47 @@ export const scrapeJanitorAI = async (url) => {
         return element ? element.getAttribute(attribute) : '';
       };
 
-      // NOTE: These selectors are placeholders and need to be updated
-      // based on JanitorAI's actual HTML structure
+      // Debug: Find what we can extract
+      const debug = {
+        h1s: Array.from(document.querySelectorAll('h1')).map(el => el.textContent.trim()).slice(0, 3),
+        h2s: Array.from(document.querySelectorAll('h2')).map(el => el.textContent.trim()).slice(0, 3),
+        metaTitle: document.title,
+        metaOgImage: getAttribute('meta[property="og:image"]', 'content'),
+        metaOgTitle: getAttribute('meta[property="og:title"]', 'content'),
+        metaOgDescription: getAttribute('meta[property="og:description"]', 'content'),
+        firstImage: getAttribute('img', 'src'),
+      };
+
+      // Try multiple selectors for character name
+      const name = getText('h1') ||
+                   getText('[data-character-name]') ||
+                   debug.metaOgTitle ||
+                   debug.h1s[0] ||
+                   'Unknown Character';
+
+      // Try meta description for bio
+      const bio = getText('[data-character-bio]') ||
+                  getText('.character-bio') ||
+                  debug.metaOgDescription ||
+                  '';
+
+      // Image from meta tags or first image
+      const imageUrl = getAttribute('meta[property="og:image"]', 'content') ||
+                      getAttribute('img[data-character-image]', 'src') ||
+                      getAttribute('.character-image img', 'src') ||
+                      debug.firstImage ||
+                      '';
+
       const data = {
-        name: getText('h1') || getText('[data-character-name]') || 'Unknown Character',
-        bio: getText('[data-character-bio]') || getText('.character-bio') || '',
+        name,
+        bio,
         personality: getText('[data-character-personality]') || getText('.character-personality') || '',
         scenario: getText('[data-character-scenario]') || getText('.character-scenario') || '',
         introMessage: getText('[data-character-intro]') || getText('.character-intro') || '',
-        imageUrl: getAttribute('img[data-character-image]', 'src') ||
-                  getAttribute('.character-image img', 'src') ||
-                  getAttribute('meta[property="og:image"]', 'content') || '',
+        imageUrl,
         tags: [],
-        contentRating: 'sfw', // Default to SFW
+        contentRating: 'sfw',
+        debug, // Include debug info
       };
 
       // Extract tags if available
@@ -120,15 +170,21 @@ export const scrapeJanitorAI = async (url) => {
       return data;
     });
 
+    // Log debug information
+    logInfo('Page debug info', characterData.debug);
+
     await browser.close();
+
+    // Remove debug object before sanitizing
+    const { debug, ...dataWithoutDebug } = characterData;
 
     // Sanitize HTML fields
     const sanitizedData = {
-      ...characterData,
-      bio: sanitizeHtml(characterData.bio),
-      personality: sanitizeHtml(characterData.personality),
-      scenario: sanitizeHtml(characterData.scenario),
-      introMessage: sanitizeHtml(characterData.introMessage),
+      ...dataWithoutDebug,
+      bio: sanitizeHtml(dataWithoutDebug.bio),
+      personality: sanitizeHtml(dataWithoutDebug.personality),
+      scenario: sanitizeHtml(dataWithoutDebug.scenario),
+      introMessage: sanitizeHtml(dataWithoutDebug.introMessage),
     };
 
     logInfo('JanitorAI scrape completed successfully', {
