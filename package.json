@@ -1,0 +1,39 @@
+{
+  "name": "botwaffle-character-nexus",
+  "version": "0.1.0",
+  "description": "Local character management tool for JanitorAI bots - privacy-first, organized worldbuilding. Part of the Botwaffle suite.",
+  "private": true,
+  "homepage": "https://botwaffle.io",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Fablestarexpanse/botwaffle-character-nexus.git"
+  },
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "backend": "npm run dev --prefix backend",
+    "frontend": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "start": "npm run start --prefix backend",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.{js,jsx,json,md}\""
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "keywords": [
+    "character-manager",
+    "janitorai",
+    "roleplay",
+    "worldbuilding",
+    "bot-management",
+    "botwaffle"
+  ],
+  "author": "Ronan",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "eslint": "^8.48.0",
+    "prettier": "^3.0.0"
+  }
+}
