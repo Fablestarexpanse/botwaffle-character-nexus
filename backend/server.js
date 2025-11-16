@@ -16,6 +16,7 @@ import { logInfo, logError } from './utils/logger.js';
 // Import routes
 import characterRoutes from './routes/characters.js';
 import importRoutes from './routes/import.js';
+import chatRoutes from './routes/chats.js';
 
 const app = express();
 
@@ -69,6 +70,9 @@ app.use('/api/characters', characterRoutes);
 
 // Import routes
 app.use('/api/import', importRoutes);
+
+// Chat routes
+app.use('/api/chats', chatRoutes);
 
 // Placeholder routes (to be implemented)
 app.get('/api/groups', (req, res) => {

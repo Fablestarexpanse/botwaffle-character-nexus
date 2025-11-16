@@ -1,19 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, RefreshCw, Download } from 'lucide-react';
+import { Plus, Search, RefreshCw, Download, MessageSquare, Users } from 'lucide-react';
 import { characterAPI } from './services/api';
 import CharacterGrid from './components/characters/CharacterGrid';
 import CharacterModal from './components/modals/CharacterModal';
 import ImportModal from './components/modals/ImportModal';
+import ChatImportModal from './components/modals/ChatImportModal';
+import ChatsView from './components/chats/ChatsView';
 
 function App() {
+  const [activeTab, setActiveTab] = useState('characters'); // 'characters' or 'chats'
   const [characters, setCharacters] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isChatImportModalOpen, setIsChatImportModalOpen] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState(null);
   const [viewingCharacter, setViewingCharacter] = useState(null);
+  const [chatViewKey, setChatViewKey] = useState(0); // Key to force remount of ChatsView
 
   // Load characters on mount
   useEffect(() => {
@@ -96,7 +101,11 @@ function App() {
   };
 
   const handleImportClick = () => {
-    setIsImportModalOpen(true);
+    if (activeTab === 'characters') {
+      setIsImportModalOpen(true);
+    } else {
+      setIsChatImportModalOpen(true);
+    }
   };
 
   const handleImportSuccess = async () => {
@@ -104,8 +113,17 @@ function App() {
     await loadCharacters();
   };
 
+  const handleChatImportSuccess = async () => {
+    // Force remount of ChatsView to refresh data
+    setChatViewKey(prev => prev + 1);
+  };
+
   const handleCloseImportModal = () => {
     setIsImportModalOpen(false);
+  };
+
+  const handleCloseChatImportModal = () => {
+    setIsChatImportModalOpen(false);
   };
 
   // Filter characters by search term
@@ -128,7 +146,7 @@ function App() {
             <div>
               <h1 className="text-2xl font-bold">Botwaffle Character Nexus</h1>
               <p className="text-sm text-gray-400">
-                Privacy-first character management
+                Privacy-first character & chat management
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -137,76 +155,117 @@ function App() {
                 className="flex items-center gap-2 bg-green-600 hover:bg-green-700 px-4 py-2 rounded transition-colors"
               >
                 <Download size={20} />
-                <span className="hidden sm:inline">Import</span>
+                <span className="hidden sm:inline">
+                  Import {activeTab === 'characters' ? 'Character' : 'Chat'}
+                </span>
               </button>
-              <button
-                onClick={handleNewCharacter}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded transition-colors"
-              >
-                <Plus size={20} />
-                <span>New Character</span>
-              </button>
+              {activeTab === 'characters' && (
+                <button
+                  onClick={handleNewCharacter}
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded transition-colors"
+                >
+                  <Plus size={20} />
+                  <span>New Character</span>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Search and filters */}
-          <div className="flex items-center gap-4">
-            <div className="flex-1 relative">
-              <Search
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                size={18}
-              />
-              <input
-                type="text"
-                placeholder="Search characters, universes, tags..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-dark-bg border border-dark-border rounded pl-10 pr-4 py-2 focus:outline-none focus:border-gray-500"
-              />
-            </div>
+          {/* Tab Navigation */}
+          <div className="flex items-center gap-1 mb-4">
             <button
-              onClick={loadCharacters}
-              className="flex items-center gap-2 bg-dark-bg hover:bg-dark-hover border border-dark-border px-4 py-2 rounded transition-colors"
-              title="Refresh"
+              onClick={() => setActiveTab('characters')}
+              className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${
+                activeTab === 'characters'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-dark-bg text-gray-400 hover:text-white hover:bg-dark-hover'
+              }`}
             >
-              <RefreshCw size={18} />
-              <span className="hidden sm:inline">Refresh</span>
+              <Users size={18} />
+              <span>Characters</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('chats')}
+              className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${
+                activeTab === 'chats'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-dark-bg text-gray-400 hover:text-white hover:bg-dark-hover'
+              }`}
+            >
+              <MessageSquare size={18} />
+              <span>Chats</span>
             </button>
           </div>
+
+          {/* Search and filters (only for characters tab) */}
+          {activeTab === 'characters' && (
+            <div className="flex items-center gap-4">
+              <div className="flex-1 relative">
+                <Search
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                  size={18}
+                />
+                <input
+                  type="text"
+                  placeholder="Search characters, universes, tags..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-dark-bg border border-dark-border rounded pl-10 pr-4 py-2 focus:outline-none focus:border-gray-500"
+                />
+              </div>
+              <button
+                onClick={loadCharacters}
+                className="flex items-center gap-2 bg-dark-bg hover:bg-dark-hover border border-dark-border px-4 py-2 rounded transition-colors"
+                title="Refresh"
+              >
+                <RefreshCw size={18} />
+                <span className="hidden sm:inline">Refresh</span>
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
       {/* Main content */}
       <main className="container mx-auto px-4 py-6">
-        {/* Stats */}
-        <div className="mb-6 flex items-center justify-between">
-          <p className="text-gray-400">
-            {isLoading ? (
-              'Loading...'
-            ) : (
-              <>
-                Showing {filteredCharacters.length} of {characters.length}{' '}
-                {characters.length === 1 ? 'character' : 'characters'}
-              </>
+        {activeTab === 'characters' ? (
+          <>
+            {/* Stats */}
+            <div className="mb-6 flex items-center justify-between">
+              <p className="text-gray-400">
+                {isLoading ? (
+                  'Loading...'
+                ) : (
+                  <>
+                    Showing {filteredCharacters.length} of {characters.length}{' '}
+                    {characters.length === 1 ? 'character' : 'characters'}
+                  </>
+                )}
+              </p>
+            </div>
+
+            {/* Error message */}
+            {error && (
+              <div className="bg-red-900/30 border border-red-700 text-red-400 p-4 rounded mb-6">
+                Error: {error}
+              </div>
             )}
-          </p>
-        </div>
 
-        {/* Error message */}
-        {error && (
-          <div className="bg-red-900/30 border border-red-700 text-red-400 p-4 rounded mb-6">
-            Error: {error}
-          </div>
+            {/* Character grid */}
+            <CharacterGrid
+              characters={filteredCharacters}
+              isLoading={isLoading}
+              onDelete={handleDeleteCharacter}
+              onEdit={handleEditCharacter}
+              onView={handleViewCharacter}
+            />
+          </>
+        ) : (
+          <>
+            {/* Chats View */}
+            <ChatsView key={chatViewKey} />
+          </>
         )}
-
-        {/* Character grid */}
-        <CharacterGrid
-          characters={filteredCharacters}
-          isLoading={isLoading}
-          onDelete={handleDeleteCharacter}
-          onEdit={handleEditCharacter}
-          onView={handleViewCharacter}
-        />
       </main>
 
       {/* Character modal (create/edit) */}
@@ -222,6 +281,13 @@ function App() {
         isOpen={isImportModalOpen}
         onClose={handleCloseImportModal}
         onImportSuccess={handleImportSuccess}
+      />
+
+      {/* Chat Import modal */}
+      <ChatImportModal
+        isOpen={isChatImportModalOpen}
+        onClose={handleCloseChatImportModal}
+        onImportSuccess={handleChatImportSuccess}
       />
 
       {/* View character details modal */}

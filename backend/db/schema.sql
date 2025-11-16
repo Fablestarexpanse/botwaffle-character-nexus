@@ -55,6 +55,32 @@ CREATE TABLE IF NOT EXISTS universes (
   modified DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Conversations Table
+CREATE TABLE IF NOT EXISTS conversations (
+  id TEXT PRIMARY KEY,
+  character_id TEXT,
+  title TEXT,
+  persona_name TEXT,
+  message_count INTEGER DEFAULT 0,
+  source_url TEXT,
+  metadata TEXT,
+  created DATETIME DEFAULT CURRENT_TIMESTAMP,
+  modified DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL
+);
+
+-- Messages Table
+CREATE TABLE IF NOT EXISTS messages (
+  id TEXT PRIMARY KEY,
+  conversation_id TEXT NOT NULL,
+  role TEXT NOT NULL CHECK(role IN ('user', 'assistant', 'system')),
+  content TEXT NOT NULL,
+  timestamp DATETIME,
+  order_index INTEGER NOT NULL,
+  metadata TEXT,
+  FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+);
+
 -- Indexes for Performance
 
 -- Characters indexes
@@ -72,6 +98,15 @@ CREATE INDEX IF NOT EXISTS idx_groups_created ON groups(created DESC);
 -- Universes indexes
 CREATE UNIQUE INDEX IF NOT EXISTS idx_universes_name ON universes(name COLLATE NOCASE);
 CREATE INDEX IF NOT EXISTS idx_universes_created ON universes(created DESC);
+
+-- Conversations indexes
+CREATE INDEX IF NOT EXISTS idx_conversations_character ON conversations(character_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_created ON conversations(created DESC);
+CREATE INDEX IF NOT EXISTS idx_conversations_modified ON conversations(modified DESC);
+
+-- Messages indexes
+CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_messages_order ON messages(conversation_id, order_index);
 
 -- Triggers for automatic modified timestamp updates
 
@@ -105,6 +140,38 @@ BEGIN
   WHERE id = NEW.id;
 END;
 
+-- Conversations modified trigger
+CREATE TRIGGER IF NOT EXISTS update_conversations_modified
+AFTER UPDATE ON conversations
+FOR EACH ROW
+BEGIN
+  UPDATE conversations
+  SET modified = CURRENT_TIMESTAMP
+  WHERE id = NEW.id;
+END;
+
+-- Update conversation message count and modified time when messages are added
+CREATE TRIGGER IF NOT EXISTS update_conversation_on_message_insert
+AFTER INSERT ON messages
+FOR EACH ROW
+BEGIN
+  UPDATE conversations
+  SET message_count = message_count + 1,
+      modified = CURRENT_TIMESTAMP
+  WHERE id = NEW.conversation_id;
+END;
+
+-- Update conversation message count when messages are deleted
+CREATE TRIGGER IF NOT EXISTS update_conversation_on_message_delete
+AFTER DELETE ON messages
+FOR EACH ROW
+BEGIN
+  UPDATE conversations
+  SET message_count = message_count - 1,
+      modified = CURRENT_TIMESTAMP
+  WHERE id = OLD.conversation_id;
+END;
+
 -- Initial Data (Optional)
 -- Uncomment to add sample data
 
@@ -118,4 +185,4 @@ CREATE TABLE IF NOT EXISTS schema_version (
   applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT OR REPLACE INTO schema_version (version) VALUES ('1.0.0');
+INSERT OR REPLACE INTO schema_version (version) VALUES ('1.1.0');
