@@ -14,9 +14,11 @@ Botwaffle Character Nexus uses **SQLite3** as its database engine for local, fil
 ### Tables
 
 1. **characters** - Core character data
-2. **groups** - Factions, organizations, teams
-3. **universes** - Top-level universe/series classification
-4. **tags** - Reusable tag system (future enhancement)
+2. **conversations** - Chat/conversation metadata (v1.1.0)
+3. **messages** - Individual chat messages (v1.1.0)
+4. **groups** - Factions, organizations, teams
+5. **universes** - Top-level universe/series classification
+6. **tags** - Reusable tag system (future enhancement)
 
 ---
 
@@ -206,6 +208,139 @@ CREATE UNIQUE INDEX idx_universes_name ON universes(name COLLATE NOCASE);
 
 ---
 
+## Conversations Table
+
+### Schema
+
+```sql
+CREATE TABLE conversations (
+  id TEXT PRIMARY KEY,              -- UUID v4
+  character_id TEXT,                -- Optional FK to characters(id)
+  title TEXT,                       -- Conversation title
+  persona_name TEXT,                -- User/persona name in chat
+  message_count INTEGER DEFAULT 0,  -- Auto-updated by triggers
+  source_url TEXT,                  -- Original URL (e.g., JanitorAI)
+  metadata TEXT,                    -- JSON metadata
+  created DATETIME DEFAULT CURRENT_TIMESTAMP,
+  modified DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL
+);
+```
+
+### Indexes
+
+```sql
+CREATE INDEX idx_conversations_character ON conversations(character_id);
+CREATE INDEX idx_conversations_created ON conversations(created DESC);
+CREATE INDEX idx_conversations_modified ON conversations(modified DESC);
+```
+
+### Field Details
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | TEXT | Yes | UUID v4 |
+| `character_id` | TEXT | No | Linked character (nullable) |
+| `title` | TEXT | No | Conversation title (max 500 chars) |
+| `persona_name` | TEXT | No | User's name in the conversation |
+| `message_count` | INTEGER | Auto | Number of messages (auto-updated) |
+| `source_url` | TEXT | No | Original source URL |
+| `metadata` | TEXT | No | JSON metadata (capture info, etc.) |
+| `created` | DATETIME | Auto | Creation timestamp |
+| `modified` | DATETIME | Auto | Last modified timestamp |
+
+### JSON Field Format
+
+#### metadata
+```json
+{
+  "capturedAt": "2025-11-16T12:00:00.000Z",
+  "source": "JanitorAI",
+  "extension": "Botwaffle Chat Capture v1.0.0",
+  "characterInfo": {},
+  "userInfo": {}
+}
+```
+
+---
+
+## Messages Table
+
+### Schema
+
+```sql
+CREATE TABLE messages (
+  id TEXT PRIMARY KEY,              -- UUID v4
+  conversation_id TEXT NOT NULL,    -- FK to conversations(id)
+  role TEXT NOT NULL,               -- 'user' | 'assistant' | 'system'
+  content TEXT NOT NULL,            -- Message content
+  timestamp DATETIME,               -- Message timestamp
+  order_index INTEGER NOT NULL,     -- Ordering within conversation
+  metadata TEXT,                    -- JSON metadata
+  FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+);
+```
+
+### Indexes
+
+```sql
+CREATE INDEX idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX idx_messages_order ON messages(conversation_id, order_index);
+CREATE INDEX idx_messages_timestamp ON messages(timestamp);
+```
+
+### Field Details
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | TEXT | Yes | UUID v4 |
+| `conversation_id` | TEXT | Yes | Parent conversation |
+| `role` | TEXT | Yes | `'user'`, `'assistant'`, or `'system'` |
+| `content` | TEXT | Yes | Message content (text or HTML) |
+| `timestamp` | DATETIME | No | When message was sent |
+| `order_index` | INTEGER | Yes | Message order in conversation |
+| `metadata` | TEXT | No | JSON metadata (original API data, etc.) |
+
+### JSON Field Format
+
+#### metadata
+```json
+{
+  "id": "original-msg-id",
+  "original": {
+    "...": "original API response data"
+  }
+}
+```
+
+### Triggers
+
+```sql
+-- Auto-increment message_count when messages are inserted
+CREATE TRIGGER update_conversation_on_message_insert
+AFTER INSERT ON messages
+FOR EACH ROW
+BEGIN
+  UPDATE conversations
+  SET message_count = message_count + 1,
+      modified = CURRENT_TIMESTAMP
+  WHERE id = NEW.conversation_id;
+END;
+
+-- Auto-decrement message_count when messages are deleted
+CREATE TRIGGER update_conversation_on_message_delete
+AFTER DELETE ON messages
+FOR EACH ROW
+BEGIN
+  UPDATE conversations
+  SET message_count = message_count - 1,
+      modified = CURRENT_TIMESTAMP
+  WHERE id = OLD.conversation_id;
+END;
+```
+
+---
+
 ## Common Queries
 
 ### Characters
@@ -269,6 +404,60 @@ SELECT g.*, c.name as character_name
 FROM groups g
 JOIN characters c ON json_extract(g.characters, '$') LIKE '%' || c.id || '%'
 WHERE g.id = ?;
+```
+
+### Conversations
+
+#### Get all conversations
+```sql
+SELECT * FROM conversations ORDER BY modified DESC;
+```
+
+#### Get conversations by character
+```sql
+SELECT * FROM conversations
+WHERE character_id = ?
+ORDER BY created DESC;
+```
+
+#### Get conversation with messages
+```sql
+SELECT c.*, m.id as message_id, m.role, m.content, m.timestamp, m.order_index
+FROM conversations c
+LEFT JOIN messages m ON c.id = m.conversation_id
+WHERE c.id = ?
+ORDER BY m.order_index;
+```
+
+#### Search conversations by title
+```sql
+SELECT * FROM conversations
+WHERE title LIKE ?
+ORDER BY modified DESC
+LIMIT 50;
+```
+
+### Messages
+
+#### Get all messages for a conversation
+```sql
+SELECT * FROM messages
+WHERE conversation_id = ?
+ORDER BY order_index;
+```
+
+#### Get messages by role
+```sql
+SELECT * FROM messages
+WHERE conversation_id = ? AND role = 'user'
+ORDER BY order_index;
+```
+
+#### Count messages in conversation
+```sql
+SELECT COUNT(*) as count
+FROM messages
+WHERE conversation_id = ?;
 ```
 
 ### Universes
@@ -506,5 +695,5 @@ CREATE TABLE character_tags (
 ---
 
 **Last Updated**: 2025-11-16
-**Version**: 0.1.0
-**Schema Version**: 1.0.0
+**Version**: 1.1.0
+**Schema Version**: 1.1.0 (Added conversations and messages tables)

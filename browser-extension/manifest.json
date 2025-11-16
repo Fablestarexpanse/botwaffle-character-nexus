@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Botwaffle Chat Capture",
+  "version": "1.0.0",
+  "description": "Capture JanitorAI chats and send them directly to your local Botwaffle Character Nexus",
+  "permissions": [
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://janitorai.com/*",
+    "http://localhost:3000/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://*.janitorai.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["injected.js"],
+      "matches": ["*://*.janitorai.com/*"]
+    }
+  ]
+}

@@ -249,6 +249,275 @@ Import character from JanitorAI URL
 
 ---
 
+## Chats
+
+### GET /api/chats
+Get all conversations with optional filtering
+
+**Query Parameters**:
+- `characterId` (string, optional) - Filter by linked character ID
+- `limit` (number, optional) - Max results (default: 100)
+- `offset` (number, optional) - Pagination offset (default: 0)
+
+**Example Request**:
+```bash
+GET /api/chats?characterId=f47ac10b-58cc-4372-a567-0e02b2c3d479&limit=20
+```
+
+**Example Response**:
+```json
+{
+  "data": [
+    {
+      "id": "conv-uuid-123",
+      "character_id": "char-uuid",
+      "title": "Chat with Aria Stormwind",
+      "persona_name": "User",
+      "message_count": 45,
+      "source_url": "https://janitorai.com/chats/abc123",
+      "created": "2025-11-16T12:00:00.000Z",
+      "modified": "2025-11-16T14:30:00.000Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+---
+
+### GET /api/chats/:id
+Get single conversation metadata
+
+**Example Request**:
+```bash
+GET /api/chats/conv-uuid-123
+```
+
+**Example Response**:
+```json
+{
+  "data": {
+    "id": "conv-uuid-123",
+    "character_id": "char-uuid",
+    "title": "Chat with Aria Stormwind",
+    "persona_name": "User",
+    "message_count": 45,
+    "source_url": "https://janitorai.com/chats/abc123",
+    "metadata": {
+      "capturedAt": "2025-11-16T12:00:00.000Z",
+      "source": "JanitorAI",
+      "extension": "Botwaffle Chat Capture v1.0.0"
+    },
+    "created": "2025-11-16T12:00:00.000Z",
+    "modified": "2025-11-16T14:30:00.000Z"
+  }
+}
+```
+
+---
+
+### GET /api/chats/:id/messages
+Get all messages for a conversation
+
+**Example Request**:
+```bash
+GET /api/chats/conv-uuid-123/messages
+```
+
+**Example Response**:
+```json
+{
+  "data": [
+    {
+      "id": "msg-uuid-1",
+      "conversation_id": "conv-uuid-123",
+      "role": "user",
+      "content": "Hello, Aria!",
+      "timestamp": "2025-11-16T12:00:00.000Z",
+      "order_index": 0,
+      "metadata": {
+        "id": "orig-msg-id",
+        "original": {}
+      }
+    },
+    {
+      "id": "msg-uuid-2",
+      "conversation_id": "conv-uuid-123",
+      "role": "assistant",
+      "content": "Greetings, traveler! What brings you to the Academy today?",
+      "timestamp": "2025-11-16T12:00:15.000Z",
+      "order_index": 1,
+      "metadata": {}
+    }
+  ]
+}
+```
+
+**Note**: Messages are returned in order (ordered by `order_index`)
+
+---
+
+### POST /api/chats/import
+Import chat from browser extension or JSON file
+
+**Request Body**:
+```json
+{
+  "chatData": {
+    "title": "Chat with Aria Stormwind",
+    "characterName": "Aria Stormwind",
+    "personaName": "User",
+    "sourceUrl": "https://janitorai.com/chats/abc123",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Hello!",
+        "timestamp": "2025-11-16T12:00:00.000Z",
+        "metadata": {}
+      },
+      {
+        "role": "assistant",
+        "content": "Hi there!",
+        "timestamp": "2025-11-16T12:00:15.000Z",
+        "metadata": {}
+      }
+    ],
+    "metadata": {
+      "capturedAt": "2025-11-16T12:05:00.000Z",
+      "source": "JanitorAI"
+    }
+  },
+  "characterId": "char-uuid-optional"
+}
+```
+
+**Validation**:
+- `chatData.messages` (array, required, min 1 message)
+- `chatData.title` (string, optional, max 500)
+- `characterId` (UUID, optional) - Link to existing character
+
+**Example Response**:
+```json
+{
+  "data": {
+    "id": "new-conv-uuid",
+    "title": "Chat with Aria Stormwind",
+    "message_count": 2,
+    "created": "2025-11-16T12:05:00.000Z"
+  },
+  "message": "Chat imported successfully! 2 messages loaded."
+}
+```
+
+**Process**:
+1. Validate chat data structure
+2. Create conversation record
+3. Create message records with order_index
+4. Trigger auto-updates message_count
+5. Return conversation object
+
+**Errors**:
+- `400` - Invalid chat data or no messages
+- `404` - Character ID not found (if provided)
+- `500` - Database error
+
+---
+
+### GET /api/chats/:id/export/:format
+Export conversation in specified format
+
+**Formats**: `json` | `txt` | `markdown` | `jsonl`
+
+**Example Requests**:
+```bash
+GET /api/chats/conv-uuid-123/export/json
+GET /api/chats/conv-uuid-123/export/txt
+GET /api/chats/conv-uuid-123/export/markdown
+GET /api/chats/conv-uuid-123/export/jsonl
+```
+
+**Response Headers**:
+```
+Content-Type: application/json (or text/plain, text/markdown)
+Content-Disposition: attachment; filename="chat-{id}.{ext}"
+```
+
+**JSON Export** (`format=json`):
+```json
+{
+  "id": "conv-uuid-123",
+  "title": "Chat with Aria",
+  "characterName": "Aria Stormwind",
+  "personaName": "User",
+  "message_count": 2,
+  "created": "2025-11-16T12:00:00.000Z",
+  "messages": [...]
+}
+```
+
+**TXT Export** (`format=txt`):
+```
+Chat with Aria Stormwind
+Created: 2025-11-16T12:00:00.000Z
+
+[User] (12:00:00): Hello!
+[Aria Stormwind] (12:00:15): Hi there!
+```
+
+**Markdown Export** (`format=markdown`):
+```markdown
+# Chat with Aria Stormwind
+
+**Created**: 2025-11-16T12:00:00.000Z
+**Messages**: 2
+
+---
+
+**[User]** (12:00:00):
+Hello!
+
+**[Aria Stormwind]** (12:00:15):
+Hi there!
+```
+
+**SillyTavern JSONL Export** (`format=jsonl`):
+```jsonl
+{"name":"Aria Stormwind","is_user":false,"send_date":"2025-11-16 12:00:15","mes":"Hi there!"}
+{"name":"User","is_user":true,"send_date":"2025-11-16 12:00:00","mes":"Hello!"}
+```
+
+**SillyTavern Requirements**:
+- Messages in reverse chronological order
+- First message duplicated (ST requirement)
+- ISO date format: `YYYY-MM-DD HH:mm:ss`
+- Field mapping: `name`, `is_user`, `send_date`, `mes`
+
+---
+
+### DELETE /api/chats/:id
+Delete conversation and all associated messages
+
+**Example Request**:
+```bash
+DELETE /api/chats/conv-uuid-123
+```
+
+**Example Response**:
+```json
+{
+  "message": "Conversation deleted successfully"
+}
+```
+
+**Side Effects**:
+- Deletes all messages (CASCADE constraint)
+- Does NOT delete linked character
+
+**Errors**:
+- `404` - Conversation not found
+
+---
+
 ## Groups
 
 ### GET /api/groups
@@ -502,4 +771,4 @@ const response = await fetch('http://localhost:3000/api/import/janitorai', {
 ---
 
 **Last Updated**: 2025-11-16
-**Version**: 0.1.0
+**Version**: 1.1.0

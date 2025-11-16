@@ -2,7 +2,7 @@
 
 ## Overview
 
-Botwaffle Character Nexus is a privacy-first, local character management tool for JanitorAI characters. It enables users to import, organize, and manage roleplay characters in a hierarchical structure with complete data ownership.
+Botwaffle Character Nexus is a privacy-first, local chat storage and character management tool for JanitorAI. It consists of three main components: a browser extension for data capture, a backend API for data processing and storage, and a frontend UI for viewing and managing content.
 
 **Core Philosophy**: All data stays local. No cloud dependencies. Complete user privacy.
 
@@ -14,12 +14,31 @@ Botwaffle Character Nexus is a privacy-first, local character management tool fo
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
+│                    Browser Extension                        │
+│               (Chrome/Firefox/Edge compatible)              │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │  Content Script (content.js)                          │  │
+│  │  - Injects UI button into JanitorAI                   │  │
+│  │  - Manages captured data                              │  │
+│  │  - Sends data to local backend                        │  │
+│  │                                                         │  │
+│  │  Injected Script (injected.js)                        │  │
+│  │  - Intercepts XHR/Fetch requests                      │  │
+│  │  - Captures chat messages from API responses          │  │
+│  └───────────────────────────────────────────────────────┘  │
+└──────────────────────┬──────────────────────────────────────┘
+                       │ HTTP POST to localhost:3000
+┌──────────────────────▼──────────────────────────────────────┐
 │                       Frontend (React)                      │
 │                    http://localhost:5173                    │
 │  ┌───────────────────────────────────────────────────────┐  │
-│  │  Components: Character Cards, Modals, Sidebar         │  │
-│  │  State: React Context + Local State                   │  │
+│  │  Components: Character/Chat Tabs, Modals, Viewers    │  │
+│  │  State: React State + useEffect                       │  │
 │  │  Styling: Tailwind CSS (Dark Theme)                   │  │
+│  │  Features:                                             │  │
+│  │    - Chat viewer with message list                    │  │
+│  │    - Export in multiple formats                       │  │
+│  │    - Character management                             │  │
 │  └───────────────────────────────────────────────────────┘  │
 └──────────────────────┬──────────────────────────────────────┘
                        │ REST API (JSON)
@@ -30,7 +49,11 @@ Botwaffle Character Nexus is a privacy-first, local character management tool fo
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │  Routes → Controllers → Services → Database           │  │
 │  │  Middleware: Helmet, CORS, Validation, Error Handler │  │
-│  │  Security: Input validation, sanitization, auth      │  │
+│  │  Features:                                             │  │
+│  │    - Chat import and storage                          │  │
+│  │    - Export to JSON/TXT/MD/JSONL                      │  │
+│  │    - Character CRUD                                   │  │
+│  │    - Image processing                                 │  │
 │  └───────────────────────────────────────────────────────┘  │
 └──────────────────────┬──────────────────────────────────────┘
                        │
@@ -41,8 +64,8 @@ Botwaffle Character Nexus is a privacy-first, local character management tool fo
 │  (db.sqlite)    │         │  /characters/   │
 │                 │         │     images/     │
 │  - Characters   │         │                 │
-│  - Groups       │         │  UUID.webp      │
-│  - Universes    │         │  UUID.webp      │
+│  - Conversations│         │  UUID.webp      │
+│  - Messages     │         │  UUID.webp      │
 │  - Metadata     │         │  ...            │
 └─────────────────┘         └─────────────────┘
 ```
@@ -51,11 +74,17 @@ Botwaffle Character Nexus is a privacy-first, local character management tool fo
 
 ## Technology Stack
 
+### Browser Extension
+- **Manifest**: Version 3 (modern, compatible with all browsers)
+- **Injection**: XHR/Fetch interception for data capture
+- **UI**: Vanilla JavaScript (no framework needed)
+- **Communication**: window.postMessage + fetch to localhost
+- **Permissions**: activeTab, host_permissions for janitorai.com
+
 ### Backend
 - **Runtime**: Node.js (>=18.0.0)
 - **Framework**: Express.js 4.x
 - **Database**: SQLite3 (local file-based)
-- **Scraping**: Puppeteer (headless Chrome)
 - **Image Processing**: Sharp (resize, format conversion, EXIF removal)
 - **Validation**: Joi (schema validation)
 - **Security**: Helmet.js, CORS, DOMPurify
@@ -65,7 +94,7 @@ Botwaffle Character Nexus is a privacy-first, local character management tool fo
 ### Frontend
 - **Framework**: React 18.x
 - **Build Tool**: Vite 4.x
-- **Styling**: Tailwind CSS 3.x
+- **Styling**: Tailwind CSS 3.x (dark theme)
 - **HTTP Client**: Axios
 - **Icons**: Lucide React
 - **Sanitization**: DOMPurify (client-side)
@@ -80,75 +109,130 @@ Botwaffle Character Nexus is a privacy-first, local character management tool fo
 
 ## Data Flow
 
-### Character Import Flow
+### Chat Capture Flow (Browser Extension → Backend)
 
 ```
-User pastes JanitorAI URL
+User browses JanitorAI chat
          │
          ▼
-Frontend validates URL
+Injected script intercepts XHR/Fetch
+  - Detects chat/message API calls
+  - Extracts message data from responses
          │
          ▼
-POST /api/import/janitorai
+Posts data to content script (window.postMessage)
          │
          ▼
-Backend validates URL (whitelist check)
+Content script normalizes data
+  - Determines role (user/assistant)
+  - Extracts timestamps
+  - Builds message array
+  - Updates button badge (message count)
          │
          ▼
-Puppeteer scrapes character data
-  - Name, bio, personality
-  - Profile image URL
-  - Tags, scenario, example dialogues
+User clicks "Send to Botwaffle" button
          │
          ▼
-Download and process image
-  - Strip EXIF metadata (privacy)
-  - Convert to WebP (compression)
-  - Save with UUID filename
+Content script POSTs to localhost:3000/api/chats/import
+  {
+    chatData: {
+      title: "Chat with Character",
+      messages: [...],
+      characterName: "...",
+      personaName: "...",
+      sourceUrl: "https://janitorai.com/...",
+      metadata: {...}
+    }
+  }
          │
          ▼
-Sanitize HTML content (DOMPurify)
+Backend receives import request
          │
          ▼
-Validate data (Joi schema)
+chatService.importChat() processes data
+  - Creates conversation record
+  - Creates message records with order_index
+  - Updates message_count via trigger
          │
          ▼
-Insert into SQLite database
+Returns success response
          │
          ▼
-Return character object to frontend
-         │
-         ▼
-Frontend updates UI (character grid)
+Content script shows success notification
 ```
 
-### Character Display Flow
+### Chat Viewing Flow (Frontend → Backend)
 
 ```
-User navigates to main page
+User opens Botwaffle frontend
          │
          ▼
-Frontend: GET /api/characters
+Clicks "Chats" tab
          │
          ▼
-Backend queries SQLite
+Frontend: GET /api/chats
          │
          ▼
-Returns JSON array of characters
+Backend queries conversations table
          │
          ▼
-Frontend renders character cards
-  - Portrait image
-  - Name, universe, tags
-  - Relationship count
+Returns array of conversations with message counts
          │
          ▼
-User right-clicks → context menu
-  - View Details
-  - Edit
-  - Duplicate
-  - Add to Group
-  - Delete
+Frontend displays conversation list
+         │
+         ▼
+User clicks a conversation
+         │
+         ▼
+Frontend: GET /api/chats/:id/messages
+         │
+         ▼
+Backend queries messages table (ordered by order_index)
+         │
+         ▼
+Returns array of messages
+         │
+         ▼
+Frontend renders message viewer
+  - User messages: blue background
+  - Assistant messages: dark background
+  - Scrollable container
+```
+
+### Chat Export Flow
+
+```
+User clicks Export button → selects format
+         │
+         ▼
+Frontend: GET /api/chats/:id/export/:format
+         │
+         ▼
+Backend fetches conversation + messages
+         │
+         ├── format=json → Return full JSON
+         │
+         ├── format=txt → formatAsText()
+         │   - Plain text with [User]/[Assistant] labels
+         │   - Timestamps
+         │
+         ├── format=markdown → formatAsMarkdown()
+         │   - Headers and formatting
+         │   - Bold labels
+         │   - Timestamps
+         │
+         └── format=jsonl → formatAsSillyTavernJSONL()
+             - JSONL format (one JSON object per line)
+             - Swipe message handling
+             - First message duplication (ST requirement)
+             - ISO date formatting
+         │
+         ▼
+Backend sets headers (Content-Type, Content-Disposition)
+         │
+         ▼
+Frontend triggers file download
 ```
 
 ---
@@ -157,98 +241,131 @@ User right-clicks → context menu
 
 ### Defense-in-Depth Strategy
 
-1. **Input Validation** (Backend)
-   - Joi schema validation on all endpoints
-   - URL whitelist for scraping (janitorai.com only)
-   - File type validation (images only)
-   - Size limits (5MB max)
+1. **Browser Extension Security**
+   - Manifest V3 (latest security standards)
+   - Content Security Policy (CSP)
+   - No eval() or inline scripts
+   - Only connects to localhost (no external servers)
+   - User-initiated actions only (button click required)
 
-2. **Output Sanitization**
+2. **Input Validation** (Backend)
+   - Joi schema validation on all endpoints
+   - File type validation (images only)
+   - Size limits (5MB max for images)
+   - Message content length limits
+
+3. **Output Sanitization**
    - DOMPurify on backend before database storage
    - DOMPurify on frontend before rendering HTML
    - EXIF metadata stripped from images
 
-3. **Network Security**
+4. **Network Security**
    - CORS restricted to localhost:5173 (dev) or specific domain (prod)
    - Helmet.js security headers
-   - No API keys exposed to frontend
+   - No API keys exposed to frontend or extension
+   - HTTPS upgrade in production
 
-4. **Data Security**
+5. **Data Security**
    - SQLite prepared statements (prevent SQL injection)
    - Database file permissions: 0600 (owner read/write only)
    - No sensitive data in logs or error messages
+   - Foreign key constraints to maintain data integrity
 
-5. **File Security**
+6. **File Security**
    - UUID-based filenames (prevent path traversal)
    - Path validation (ensure within /characters/images/)
    - Image processing pipeline (re-encode to strip malicious content)
 
-### Environment Variable Isolation
-
-**Backend Only** (never exposed):
-```
-CLAUDE_API_KEY=sk-ant-...
-JLLM_API_KEY=...
-DATABASE_PATH=./db.sqlite
-```
-
-**Frontend Safe** (can be exposed):
-```
-REACT_APP_API_URL=http://localhost:3000/api
-REACT_APP_VERSION=0.1.0
-```
-
 ---
 
-## Database Schema
+## Database Schema (v1.1.0)
 
 ### Characters Table
 ```sql
-CREATE TABLE characters (
-  id TEXT PRIMARY KEY,              -- UUID v4
+CREATE TABLE IF NOT EXISTS characters (
+  id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   chat_name TEXT,
   universe TEXT NOT NULL,
-  image TEXT,                       -- Filename (UUID.webp)
-  bio TEXT,                         -- Sanitized HTML
+  image TEXT,
+  bio TEXT,
   personality TEXT,
   scenario TEXT,
   intro_message TEXT,
-  example_dialogues TEXT,           -- JSON array
-  tags TEXT,                        -- JSON array
-  content_rating TEXT,              -- 'sfw' | 'nsfw'
-  notes TEXT,                       -- User notes
-  relationships TEXT,               -- JSON array
-  custom_tags TEXT,                 -- JSON array
+  example_dialogues TEXT,
+  tags TEXT,
+  content_rating TEXT CHECK(content_rating IN ('sfw', 'nsfw')),
+  notes TEXT,
+  relationships TEXT,
+  custom_tags TEXT,
   created DATETIME DEFAULT CURRENT_TIMESTAMP,
   modified DATETIME DEFAULT CURRENT_TIMESTAMP,
-  source TEXT,                      -- Original JanitorAI URL
-  last_synced_from TEXT             -- URL for re-import
+  source TEXT,
+  last_synced_from TEXT
 );
 ```
 
-### Groups Table
+### Conversations Table
 ```sql
-CREATE TABLE groups (
+CREATE TABLE IF NOT EXISTS conversations (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  universe TEXT NOT NULL,
-  description TEXT,
-  characters TEXT,                  -- JSON array of character IDs
+  character_id TEXT,
+  title TEXT,
+  persona_name TEXT,
+  message_count INTEGER DEFAULT 0,
+  source_url TEXT,
+  metadata TEXT,
   created DATETIME DEFAULT CURRENT_TIMESTAMP,
-  modified DATETIME DEFAULT CURRENT_TIMESTAMP
+  modified DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE SET NULL
 );
 ```
 
-### Universes Table
+### Messages Table
 ```sql
-CREATE TABLE universes (
+CREATE TABLE IF NOT EXISTS messages (
   id TEXT PRIMARY KEY,
-  name TEXT NOT NULL UNIQUE,
-  description TEXT,
-  created DATETIME DEFAULT CURRENT_TIMESTAMP,
-  modified DATETIME DEFAULT CURRENT_TIMESTAMP
+  conversation_id TEXT NOT NULL,
+  role TEXT NOT NULL CHECK(role IN ('user', 'assistant', 'system')),
+  content TEXT NOT NULL,
+  timestamp DATETIME,
+  order_index INTEGER NOT NULL,
+  metadata TEXT,
+  FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
+```
+
+### Key Indexes
+```sql
+CREATE INDEX idx_conversations_character ON conversations(character_id);
+CREATE INDEX idx_conversations_created ON conversations(created);
+CREATE INDEX idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX idx_messages_order ON messages(conversation_id, order_index);
+```
+
+### Triggers
+```sql
+-- Auto-update message_count when messages are added
+CREATE TRIGGER update_conversation_on_message_insert
+AFTER INSERT ON messages
+FOR EACH ROW
+BEGIN
+  UPDATE conversations
+  SET message_count = message_count + 1,
+      modified = CURRENT_TIMESTAMP
+  WHERE id = NEW.conversation_id;
+END;
+
+-- Auto-update message_count when messages are deleted
+CREATE TRIGGER update_conversation_on_message_delete
+AFTER DELETE ON messages
+FOR EACH ROW
+BEGIN
+  UPDATE conversations
+  SET message_count = message_count - 1,
+      modified = CURRENT_TIMESTAMP
+  WHERE id = OLD.conversation_id;
+END;
 ```
 
 ---
@@ -258,28 +375,19 @@ CREATE TABLE universes (
 ### RESTful Endpoints
 
 #### Characters
-- `GET /api/characters` - List all characters (with filters)
+- `GET /api/characters` - List all characters
 - `GET /api/characters/:id` - Get single character
-- `POST /api/characters` - Create character (manual)
+- `POST /api/characters` - Create character
 - `PUT /api/characters/:id` - Update character
 - `DELETE /api/characters/:id` - Delete character
 
-#### Import
-- `POST /api/import/janitorai` - Import from URL
-- `POST /api/import/manual` - Manual character creation
-
-#### Groups
-- `GET /api/groups` - List all groups
-- `GET /api/groups/:id` - Get single group
-- `POST /api/groups` - Create group
-- `PUT /api/groups/:id` - Update group
-- `DELETE /api/groups/:id` - Delete group
-
-#### Universes
-- `GET /api/universes` - List all universes
-- `POST /api/universes` - Create universe
-- `PUT /api/universes/:id` - Update universe
-- `DELETE /api/universes/:id` - Delete universe
+#### Chats (New in v1.1.0)
+- `GET /api/chats` - List all conversations
+- `GET /api/chats/:id` - Get single conversation
+- `GET /api/chats/:id/messages` - Get conversation messages
+- `POST /api/chats/import` - Import chat
+- `GET /api/chats/:id/export/:format` - Export chat (json|txt|markdown|jsonl)
+- `DELETE /api/chats/:id` - Delete conversation
 
 #### Files
 - `GET /api/images/:filename` - Serve character image
@@ -293,86 +401,186 @@ CREATE TABLE universes (
 
 ```
 App.jsx
-  └─ MainPage.jsx
-      ├─ Header.jsx
-      │   ├─ SearchBar.jsx
-      │   └─ Button.jsx (Import, Settings)
+  ├─ Tab Navigation (Characters / Chats)
+  │
+  ├─ Characters Tab
+  │   ├─ Header.jsx
+  │   │   ├─ SearchBar.jsx
+  │   │   └─ Buttons (New Character, Import)
+  │   │
+  │   ├─ CharacterGrid.jsx
+  │   │   └─ CharacterCard.jsx (x N)
+  │   │
+  │   └─ Modals
+  │       ├─ ImportModal.jsx (JanitorAI URL / JSON file)
+  │       ├─ CharacterDetailModal.jsx
+  │       ├─ EditCharacterModal.jsx
+  │       └─ ConfirmDeleteModal.jsx
+  │
+  └─ Chats Tab
+      ├─ ChatImportModal.jsx
+      │   ├─ JSON file upload
+      │   └─ Character linking dropdown
       │
-      ├─ Sidebar.jsx
-      │   └─ UniverseTree
-      │       └─ GroupItems
-      │           └─ CharacterItems
-      │
-      ├─ CharacterGrid.jsx
-      │   └─ CharacterCard.jsx (x N)
-      │       └─ ContextMenu.jsx (right-click)
-      │
-      └─ Modals
-          ├─ ImportModal.jsx
-          ├─ CharacterDetailModal.jsx
-          ├─ EditCharacterModal.jsx
-          └─ ConfirmDeleteModal.jsx
+      └─ ChatsView.jsx
+          ├─ Conversation List (left panel)
+          │   └─ ConversationCard (x N)
+          │       ├─ Title
+          │       ├─ Message count
+          │       ├─ Created date
+          │       └─ Delete button
+          │
+          └─ Message Viewer (right panel)
+              ├─ Export buttons (JSON, TXT, MD, JSONL)
+              ├─ Conversation header
+              └─ Message list
+                  └─ MessageBubble (x N)
+                      ├─ Role indicator (User/Assistant)
+                      ├─ Content
+                      └─ Timestamp
 ```
 
 ### State Management
 
-**Context API** for global state:
-- `CharacterContext` - Character data, CRUD operations
-- `UIContext` - Modals, selected items, filters
+**Component State** (useState):
+- `activeTab` - 'characters' or 'chats'
+- `selectedConversation` - Current conversation being viewed
+- `messages` - Messages for selected conversation
+- `characters` - Character list
+- `conversations` - Conversation list
 
-**Local State** for component-specific:
-- Form inputs
-- Loading states
-- Temporary UI state
-
-### Styling Strategy
-
-**Tailwind CSS** with custom theme:
-```javascript
-// Dark theme colors
-{
-  'dark-bg': '#1a1a1a',       // Main background
-  'dark-card': '#2d2d2d',     // Card background
-  'dark-border': '#404040',   // Borders
-}
-```
-
-**Responsive breakpoints**:
-- Mobile: < 640px
-- Tablet: 640px - 1024px
-- Desktop: > 1024px
+**Side Effects** (useEffect):
+- Fetch conversations on tab change
+- Fetch messages when conversation selected
+- Refresh data after import/delete
 
 ---
 
-## File Storage Strategy
+## Export Formats
 
-### Image Storage
+### JSON Format
+```json
+{
+  "id": "conv-uuid",
+  "title": "Chat with Character",
+  "characterName": "Character Name",
+  "personaName": "User",
+  "message_count": 25,
+  "created": "2025-01-16T10:00:00.000Z",
+  "messages": [
+    {
+      "id": "msg-uuid",
+      "role": "user",
+      "content": "Hello!",
+      "timestamp": "2025-01-16T10:00:00.000Z",
+      "order_index": 0
+    },
+    {
+      "id": "msg-uuid",
+      "role": "assistant",
+      "content": "Hi there!",
+      "timestamp": "2025-01-16T10:00:15.000Z",
+      "order_index": 1
+    }
+  ]
+}
+```
 
-**Location**: `/characters/images/`
+### TXT Format
+```
+Chat with Character
+Created: 2025-01-16T10:00:00.000Z
 
-**Naming Convention**: UUID v4 + `.webp`
-Example: `f47ac10b-58cc-4372-a567-0e02b2c3d479.webp`
+[User] (10:00:00): Hello!
+[Character Name] (10:00:15): Hi there!
+```
 
-**Processing Pipeline**:
-1. Download from URL or receive upload
-2. Validate MIME type (jpeg, png, webp only)
-3. Validate file size (max 5MB)
-4. Strip EXIF metadata (privacy)
-5. Convert to WebP (compression)
-6. Resize if needed (max 1024x1024)
-7. Save with UUID filename
+### Markdown Format
+```markdown
+# Chat with Character
 
-**Why WebP?**
-- Better compression than JPEG/PNG
-- Supports transparency
-- Smaller file sizes
+**Created**: 2025-01-16T10:00:00.000Z
+**Messages**: 25
+
+---
+
+**[User]** (10:00:00):
+Hello!
+
+**[Character Name]** (10:00:15):
+Hi there!
+```
+
+### SillyTavern JSONL Format
+```jsonl
+{"name":"Character Name","is_user":false,"send_date":"2025-01-16 10:00:15","mes":"Hi there!"}
+{"name":"User","is_user":true,"send_date":"2025-01-16 10:00:00","mes":"Hello!"}
+```
+
+**Key SillyTavern Requirements**:
+- Messages in reverse chronological order
+- First message duplicated (ST requirement)
+- ISO date format: YYYY-MM-DD HH:mm:ss
+- Swipe message handling (future enhancement)
+
+---
+
+## Browser Extension Architecture
+
+### File Structure
+```
+browser-extension/
+├── manifest.json       # Extension configuration (Manifest V3)
+├── content.js          # Content script (UI + data management)
+├── injected.js         # Page context script (network interception)
+└── README.md           # Installation and usage guide
+```
+
+### Manifest V3 Configuration
+```json
+{
+  "manifest_version": 3,
+  "name": "Botwaffle Chat Capture",
+  "permissions": ["activeTab"],
+  "host_permissions": [
+    "https://janitorai.com/*",
+    "http://localhost:3000/*"
+  ],
+  "content_scripts": [{
+    "matches": ["*://*.janitorai.com/*"],
+    "js": ["content.js"],
+    "run_at": "document_idle"
+  }],
+  "web_accessible_resources": [{
+    "resources": ["injected.js"],
+    "matches": ["*://*.janitorai.com/*"]
+  }]
+}
+```
+
+### Extension Communication Flow
+```
+Page Context (injected.js)
+  - Intercepts XHR/Fetch
+  - Extracts chat data
+         │
+         ▼ window.postMessage
+Content Script (content.js)
+  - Listens for messages
+  - Normalizes data
+  - Manages UI button
+         │
+         ▼ fetch()
+Localhost Backend (port 3000)
+  - Receives POST /api/chats/import
+  - Stores in database
+```
 
 ---
 
 ## Error Handling Strategy
 
 ### Backend Error Responses
-
 ```javascript
 {
   "error": "User-friendly error message",
@@ -389,19 +597,16 @@ Example: `f47ac10b-58cc-4372-a567-0e02b2c3d479.webp`
 - `500` - Internal Server Error
 
 ### Frontend Error Handling
-
 ```javascript
 try {
-  const response = await api.fetchCharacters();
+  const response = await chatAPI.import(chatData);
+  showSuccessToast('Chat imported successfully!');
 } catch (error) {
   if (error.response) {
-    // Server responded with error
     showErrorToast(error.response.data.error);
   } else if (error.request) {
-    // Network error
     showErrorToast('Cannot connect to server');
   } else {
-    // Client-side error
     showErrorToast('An unexpected error occurred');
   }
 }
@@ -412,81 +617,43 @@ try {
 ## Development Workflow
 
 ### Running Locally
-
 ```bash
-# Terminal 1: Root (install dependencies)
-npm install
+# Terminal 1: Backend
+cd backend && npm run dev  # Port 3000
 
-# Terminal 2: Backend
-cd backend
-npm install
-npm run dev  # Runs on localhost:3000
+# Terminal 2: Frontend
+cd frontend && npm run dev  # Port 5173
 
-# Terminal 3: Frontend
-cd frontend
-npm install
-npm run dev  # Runs on localhost:5173
-
-# OR: Run both concurrently from root
+# OR: Both concurrently from root
 npm run dev
 ```
 
-### Database Initialization
-
-```bash
-cd backend
-npm run init-db  # Creates db.sqlite and tables
-```
+### Extension Development
+1. Edit extension files
+2. Reload extension in browser (chrome://extensions/ → Reload)
+3. Refresh JanitorAI page to test
 
 ---
 
-## Future Enhancements (Phase 2+)
+## Future Enhancements
 
-1. **Relationship Graph Visualization**
-   - D3.js or Cytoscape.js
-   - Interactive node graph
-   - Visual relationship types
+### Phase 2: Advanced Features
+1. **EPUB Export** - Using epub-gen library
+2. **PDF Export** - Using puppeteer for styled PDFs
+3. **Batch Export** - Export multiple chats as ZIP
+4. **Advanced Search** - Full-text search with SQLite FTS5
+5. **Chat Analytics** - Message counts, word clouds, timelines
 
-2. **AI Generation Integration**
-   - Claude API for character generation
-   - JLLM API for alternative generation
-   - Chat with characters locally
+### Phase 3: AI Integration
+1. **Character Generation** - Claude API integration
+2. **Chat with Characters** - Local LLM integration
+3. **Personality Analysis** - Analyze chat patterns
 
-3. **Export/Import**
-   - JSON export of entire library
-   - Import from other tools
-   - Backup/restore functionality
-
-4. **Advanced Search**
-   - Full-text search (SQLite FTS5)
-   - Filter by multiple criteria
-   - Saved searches
-
-5. **Collections/Playlists**
-   - Custom groupings beyond universe/faction
-   - Tags-based collections
-   - Smart collections (dynamic filters)
-
----
-
-## Deployment Considerations
-
-### Local-First Deployment
-
-**Option 1**: Desktop App (Electron)
-- Package as standalone app
-- No server required
-- Native OS integration
-
-**Option 2**: Local Web Server
-- Keep as Node.js app
-- Users run `npm start`
-- Access via browser
-
-**Option 3**: Docker Container
-- Package entire stack
-- One-command deployment
-- Isolated environment
+### Phase 4: Deployment
+1. **Electron App** - Desktop application
+2. **Docker Container** - One-command deployment
+3. **Extension Publishing** - Chrome Web Store / Firefox Add-ons
+4. **Multi-user Support** - Optional authentication
 
 ---
 
@@ -516,5 +683,5 @@ MIT License - See LICENSE file for details.
 ---
 
 **Last Updated**: 2025-11-16
-**Version**: 0.1.0
-**Status**: Initial Setup Phase
+**Version**: 1.1.0
+**Status**: Chat Storage System Complete
