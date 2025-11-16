@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+
+# Environment variables - NEVER COMMIT
+.env
+.env.local
+.env.production
+.env.*.local
+.secrets/
+keys/
+
+# Database
+db.sqlite
+*.db
+*.sqlite
+
+# Character images and user data
+characters/images/*
+!characters/images/.gitkeep
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+.vite/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor directories
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+coverage/
+.nyc_output/
+
+# Sensitive files
+*.key
+*.pem
+*.cert
+*.crt
+secrets.*
+
+# Temporary files
+tmp/
+temp/
