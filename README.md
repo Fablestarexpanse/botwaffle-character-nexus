@@ -1,10 +1,10 @@
 # Botwaffle Character Nexus
 
-> **Privacy-first, local character management for JanitorAI bots**
+> **Privacy-first, local chat storage and character management for JanitorAI**
 
-A powerful tool for organizing and managing JanitorAI character profiles. Import, organize hierarchically, and manage your roleplay characters with complete privacy—all data stored locally, no cloud required.
+A powerful tool for storing and managing your JanitorAI chats and characters. Capture chats directly from JanitorAI with our browser extension, create and organize characters, export conversations in multiple formats—all with complete privacy and local-only storage.
 
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![Version](https://img.shields.io/badge/version-1.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)
 
@@ -12,18 +12,38 @@ A powerful tool for organizing and managing JanitorAI character profiles. Import
 
 ## Features
 
-✅ **One-Click Import** - Paste JanitorAI URL → auto-import character with portrait
-✅ **Hierarchical Organization** - Universe → Group → Character structure
-✅ **Local-First Privacy** - All data stored on your machine (SQLite + local images)
-✅ **Smart Tags & Search** - Filter by tags, universe, content rating, name
-✅ **Relationship Mapping** - Track character relationships and connections
+✅ **Browser Extension** - One-click chat capture from JanitorAI.com (no manual downloads!)
+✅ **Chat Storage** - Save and organize conversations with full message history
+✅ **Multiple Export Formats** - JSON, TXT, Markdown, SillyTavern JSONL
+✅ **Character Management** - Create and organize characters manually or import from JanitorAI
+✅ **Local-First Privacy** - All data stored on your machine (SQLite + local storage)
+✅ **Smart Organization** - Link chats to characters, search conversations, filter by date
 ✅ **Dark Theme UI** - Modern dark design with Tailwind CSS
-✅ **Security Built-In** - Input validation, HTML sanitization, EXIF stripping
+✅ **Security Built-In** - Input validation, HTML sanitization, data privacy
 ✅ **Open Source** - MIT License, self-hostable
 
 ---
 
 ## Quick Start
+
+### Option 1: Easy Rebuild (Windows/Linux/Mac)
+
+```bash
+# Windows
+rebuild.bat
+
+# Linux/Mac
+./rebuild.sh
+```
+
+The rebuild script will:
+- Delete old files
+- Clone fresh repository
+- Install all dependencies
+- Initialize database
+- You're ready to go!
+
+### Option 2: Manual Setup
 
 ```bash
 # Clone repository
@@ -48,7 +68,63 @@ npm run dev
 **Backend**: http://localhost:3000
 **Frontend**: http://localhost:5173
 
-See [SETUP_GUIDE.md](./docs/SETUP_GUIDE.md) for detailed instructions.
+---
+
+## Browser Extension Setup
+
+To capture chats from JanitorAI, install our lightweight browser extension:
+
+### Chrome/Edge
+
+1. Open `chrome://extensions/` (or `edge://extensions/`)
+2. Enable **Developer mode** (toggle in top-right)
+3. Click **Load unpacked**
+4. Select the `browser-extension` folder from this project
+5. Visit JanitorAI.com and start capturing!
+
+### Firefox
+
+1. Open `about:debugging#/runtime/this-firefox`
+2. Click **Load Temporary Add-on...**
+3. Select `browser-extension/manifest.json`
+4. Visit JanitorAI.com and start capturing!
+
+See [browser-extension/README.md](./browser-extension/README.md) for detailed instructions.
+
+---
+
+## How It Works
+
+```
+┌─────────────────┐
+│  JanitorAI.com  │  ← Browse and chat normally
+│   (chat page)   │
+└────────┬────────┘
+         │
+    ┌────▼─────────────────┐
+    │ Browser Extension    │  ← Captures messages automatically
+    │ [Send to Botwaffle]  │
+    │    Button (23 msgs)  │
+    └────┬─────────────────┘
+         │ HTTP POST
+    ┌────▼─────────────────┐
+    │  localhost:3000      │  ← Your Botwaffle backend
+    │  Botwaffle Nexus     │     saves to SQLite
+    └────┬─────────────────┘
+         │
+    ┌────▼─────────────────┐
+    │  localhost:5173      │  ← View and manage chats
+    │  Frontend UI         │     in beautiful interface
+    └──────────────────────┘
+```
+
+**Workflow:**
+1. Install browser extension
+2. Visit JanitorAI and chat normally
+3. Extension captures messages as they load
+4. Click "Send to Botwaffle" button when ready
+5. View your chat in Botwaffle (Chats tab)
+6. Export to any format (JSON, TXT, Markdown, SillyTavern)
 
 ---
 
@@ -57,8 +133,7 @@ See [SETUP_GUIDE.md](./docs/SETUP_GUIDE.md) for detailed instructions.
 **Backend**
 - Node.js + Express.js
 - SQLite3 (local database)
-- Puppeteer (JanitorAI scraping)
-- Sharp (image processing with EXIF stripping)
+- Sharp (image processing)
 - Joi (validation) + DOMPurify (sanitization)
 - Helmet.js (security headers)
 
@@ -68,85 +143,90 @@ See [SETUP_GUIDE.md](./docs/SETUP_GUIDE.md) for detailed instructions.
 - Axios (HTTP client)
 - Lucide React (icons)
 
+**Browser Extension**
+- Manifest V3 (Chrome/Firefox/Edge compatible)
+- XHR/Fetch interception
+- Direct integration with local backend
+
 ---
 
 ## Project Structure
 
 ```
 botwaffle-character-nexus/
+├── browser-extension/      # Browser extension for chat capture
+│   ├── manifest.json        # Extension config
+│   ├── content.js          # Main content script
+│   ├── injected.js         # Network interception
+│   └── README.md           # Extension docs
+│
 ├── backend/                # Express API server
 │   ├── server.js           # Main entry point
 │   ├── config/             # Environment, database config
-│   ├── routes/             # API routes
+│   ├── routes/             # API routes (characters, chats)
 │   ├── controllers/        # Request handlers
-│   ├── services/           # Business logic (scraping, images)
-│   ├── middleware/         # Validation, error handling
-│   └── db/                 # Schema, migrations
+│   ├── services/           # Business logic
+│   └── db/
+│       └── schema.sql      # Database schema (v1.1.0)
 │
 ├── frontend/               # React frontend
 │   ├── src/
-│   │   ├── App.jsx         # Main component
+│   │   ├── App.jsx         # Main component (tabs: Characters/Chats)
 │   │   ├── components/     # UI components
-│   │   ├── services/       # API client
+│   │   │   ├── characters/ # Character management
+│   │   │   ├── chats/      # Chat viewer (ChatsView.jsx)
+│   │   │   └── modals/     # Import modals
+│   │   ├── services/       # API client (characterAPI, chatAPI)
 │   │   └── styles/         # Tailwind CSS
 │   └── index.html
 │
 ├── characters/images/      # Character portraits (local storage)
 ├── db.sqlite               # SQLite database (not committed)
 ├── .env                    # Environment variables (not committed)
+├── rebuild.sh              # Quick rebuild script (Linux/Mac)
+├── rebuild.bat             # Quick rebuild script (Windows)
 └── docs/                   # Documentation
     ├── SETUP_GUIDE.md      # Detailed setup
     ├── API_DOCS.md         # API reference
+    ├── DATABASE.md         # Schema documentation
+    ├── ARCHITECTURE.md     # System architecture
     ├── SECURITY.md         # Security guidelines
-    └── DATABASE.md         # Schema documentation
+    └── JANITORAI_DOWNLOADER_ANALYSIS.md  # Research analysis
 ```
 
 ---
 
 ## Usage
 
-### Import from JanitorAI
+### Capturing Chats from JanitorAI
 
-1. Copy character URL from JanitorAI (e.g., `https://janitorai.com/characters/abc123`)
-2. Click "Import" button in app
-3. Paste URL and click "Import Character"
-4. Character appears in grid with portrait, tags, and metadata
+1. **Install Extension**: Load the browser extension (see setup above)
+2. **Visit JanitorAI**: Navigate to any chat on https://janitorai.com
+3. **Chat Normally**: The extension automatically captures messages
+4. **Send to Botwaffle**: Click the purple "Send to Botwaffle" button
+5. **View in App**: Open http://localhost:5173 and click "Chats" tab
 
-### Manual Character Creation
+### Managing Chats
+
+- **View Conversations**: Click on any conversation to see messages
+- **Export Chats**: Click export button and choose format:
+  - JSON (full data)
+  - TXT (plain text)
+  - Markdown (formatted)
+  - SillyTavern JSONL (compatible with SillyTavern)
+- **Delete Chats**: Remove conversations you no longer need
+- **Search**: Filter by character, date, or title
+
+### Creating Characters
 
 1. Click "New Character" button
-2. Fill in name, universe, bio, personality, tags
+2. Fill in name, universe, bio, personality
 3. Upload custom portrait (optional)
-4. Save
+4. Save and organize
 
-### Organize Characters
+### Linking Chats to Characters
 
-- **Universes**: Top-level categories (e.g., "Star Wars", "Marvel")
-- **Groups**: Factions, teams, organizations (e.g., "Avengers", "Sith Lords")
-- **Characters**: Individual characters with relationships
-
-Drag-and-drop in sidebar to reorganize (coming in v0.2.0).
-
----
-
-## Security & Privacy
-
-**Privacy-First Design**:
-- All data stored locally on your machine
-- No cloud services or external APIs (except for imports)
-- Database file: `db.sqlite` (permissions: 0600, owner-only)
-- Images stored in `/characters/images/`
-
-**Security Measures**:
-- Input validation with Joi schemas
-- HTML sanitization with DOMPurify (backend + frontend)
-- EXIF metadata stripped from images (prevents location leaks)
-- Prepared SQL statements (prevents SQL injection)
-- CORS restricted to localhost
-- Helmet.js security headers
-- URL validation for scraping (whitelist: janitorai.com only)
-
-See [SECURITY.md](./SECURITY.md) for detailed security guidelines.
+When importing a chat, you can link it to an existing character for better organization.
 
 ---
 
@@ -159,18 +239,96 @@ See [SECURITY.md](./SECURITY.md) for detailed security guidelines.
 - `PUT /api/characters/:id` - Update character
 - `DELETE /api/characters/:id` - Delete character
 
-### Import
-- `POST /api/import/janitorai` - Import from JanitorAI URL
+### Chats
+- `GET /api/chats` - List all conversations
+- `GET /api/chats/:id` - Get single conversation
+- `GET /api/chats/:id/messages` - Get conversation messages
+- `POST /api/chats/import` - Import chat (from extension or JSON file)
+- `GET /api/chats/:id/export/:format` - Export chat (json|txt|markdown|jsonl)
+- `DELETE /api/chats/:id` - Delete conversation
 
-### Groups
-- `GET /api/groups` - List groups
-- `POST /api/groups` - Create group
+See [docs/API_DOCS.md](./docs/API_DOCS.md) for complete API documentation.
 
-### Universes
-- `GET /api/universes` - List universes
-- `POST /api/universes` - Create universe
+---
 
-See [API_DOCS.md](./docs/API_DOCS.md) for full API documentation.
+## Database Schema
+
+**Version 1.1.0** includes:
+
+### Characters Table
+- Character profiles (name, bio, personality, images, tags)
+- Custom notes and relationships
+- Creation and modification timestamps
+
+### Conversations Table
+- Chat metadata (title, source URL, message count)
+- Character linking (optional foreign key)
+- Persona name tracking
+
+### Messages Table
+- Individual messages (role, content, timestamp)
+- Order preservation
+- Metadata storage
+
+See [docs/DATABASE.md](./docs/DATABASE.md) for complete schema.
+
+---
+
+## Export Formats
+
+### JSON
+Full structured data with all metadata
+```json
+{
+  "title": "Chat with Character",
+  "characterName": "Character Name",
+  "messages": [...]
+}
+```
+
+### TXT
+Plain text conversation format
+```
+[User] Hello!
+[Character] Hi there!
+```
+
+### Markdown
+Formatted markdown with headers
+```markdown
+# Chat with Character
+
+**[User]**: Hello!
+
+**[Character]**: Hi there!
+```
+
+### SillyTavern JSONL
+Compatible with SillyTavern format
+- Swipe message support
+- First message duplication (ST requirement)
+- Proper date formatting
+
+---
+
+## Security & Privacy
+
+**Privacy-First Design**:
+- All data stored locally on your machine
+- No cloud services or external APIs
+- Database: `db.sqlite` (permissions: 0600)
+- Images: `/characters/images/` (local only)
+- Browser extension: Localhost-only communication
+
+**Security Measures**:
+- Input validation with Joi schemas
+- HTML sanitization with DOMPurify
+- Prepared SQL statements (prevent SQL injection)
+- CORS restricted to localhost
+- Helmet.js security headers
+- No external data transmission
+
+See [SECURITY.md](./SECURITY.md) for detailed security guidelines.
 
 ---
 
@@ -204,39 +362,79 @@ cd backend && npm run init-db
 # View database (SQLite CLI)
 sqlite3 db.sqlite
 > .tables
-> SELECT * FROM characters;
+> SELECT * FROM conversations;
 ```
+
+---
+
+## Troubleshooting
+
+**Extension button not appearing?**
+- Wait 2 seconds after page load
+- Refresh the JanitorAI page
+- Check browser console for errors
+
+**"Failed to send chat to Botwaffle"?**
+- Ensure backend is running: `npm run backend`
+- Verify http://localhost:3000 is accessible
+- Check backend terminal for errors
+
+**Port 3000 already in use?**
+```bash
+lsof -ti:3000 | xargs kill -9  # macOS/Linux
+```
+
+**Database locked?**
+```bash
+rm db.sqlite
+cd backend && npm run init-db
+```
+
+See [docs/SETUP_GUIDE.md](./docs/SETUP_GUIDE.md) for more solutions.
 
 ---
 
 ## Roadmap
 
-### Phase 1: MVP (Current)
-- [x] Project setup with security best practices
-- [x] Database schema and initialization
-- [ ] JanitorAI URL import
-- [ ] Character CRUD operations
-- [ ] Basic UI with character grid
-- [ ] Search and filters
+### Current Version (1.1.0)
+- [x] Chat storage and management system
+- [x] Browser extension for JanitorAI capture
+- [x] Multiple export formats (JSON, TXT, Markdown, JSONL)
+- [x] Character creation and management
+- [x] Dark theme UI with tab navigation
 
 ### Phase 2: Enhanced Features
-- [ ] Relationship graph visualization (D3.js)
-- [ ] Drag-and-drop organization
-- [ ] Bulk import from JSON
-- [ ] Export entire library
-- [ ] Advanced search (full-text)
-- [ ] Collections/playlists
+- [ ] Advanced search across conversations
+- [ ] Batch export (export multiple chats at once)
+- [ ] EPUB export format
+- [ ] PDF export with custom styling
+- [ ] Character avatar auto-detection from chats
+- [ ] Chat analytics and statistics
 
-### Phase 3: AI Integration
-- [ ] Claude API integration for character generation
-- [ ] JLLM API support
-- [ ] Chat with characters locally
-- [ ] Character personality analysis
+### Phase 3: Advanced Organization
+- [ ] Relationship graph visualization
+- [ ] Collections/playlists
+- [ ] Tags and custom categorization
+- [ ] Full-text search (SQLite FTS5)
+- [ ] Backup/restore functionality
 
 ### Phase 4: Deployment
 - [ ] Electron desktop app
 - [ ] Docker container
+- [ ] Chrome Web Store / Firefox Add-ons publication
 - [ ] Multi-user support (optional)
+
+---
+
+## Documentation
+
+- [SETUP_GUIDE.md](./docs/SETUP_GUIDE.md) - Detailed setup instructions
+- [API_DOCS.md](./docs/API_DOCS.md) - Complete API reference
+- [DATABASE.md](./docs/DATABASE.md) - Database schema documentation
+- [ARCHITECTURE.md](./docs/ARCHITECTURE.md) - System architecture
+- [SECURITY.md](./docs/SECURITY.md) - Security best practices
+- [browser-extension/README.md](./browser-extension/README.md) - Extension guide
+- [JANITORAI_DOWNLOADER_ANALYSIS.md](./docs/JANITORAI_DOWNLOADER_ANALYSIS.md) - Research analysis
 
 ---
 
@@ -252,40 +450,7 @@ We welcome contributions! Please:
 6. Push to your fork
 7. Open a Pull Request
 
-**Security**: Report vulnerabilities via email to security@botwaffle.io (do NOT create public issues).
-
----
-
-## Documentation
-
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture and design decisions
-- [SECURITY.md](./SECURITY.md) - Security guidelines and best practices
-- [DATABASE.md](./DATABASE.md) - Database schema and queries
-- [SETUP_GUIDE.md](./docs/SETUP_GUIDE.md) - Detailed setup instructions
-- [API_DOCS.md](./docs/API_DOCS.md) - API reference
-
----
-
-## Troubleshooting
-
-**Port 3000 already in use?**
-```bash
-lsof -ti:3000 | xargs kill -9  # macOS/Linux
-```
-
-**Database locked?**
-```bash
-rm db.sqlite
-cd backend && npm run init-db
-```
-
-**Puppeteer fails?**
-```bash
-# Ubuntu/Debian
-sudo apt-get install -y libnss3 libxss1 libasound2 libatk-bridge2.0-0
-```
-
-See [SETUP_GUIDE.md](./docs/SETUP_GUIDE.md#common-issues--troubleshooting) for more solutions.
+**Security**: Report vulnerabilities via GitHub Issues with the security label.
 
 ---
 
@@ -298,19 +463,18 @@ MIT License - see [LICENSE](./LICENSE) for details.
 ## Acknowledgments
 
 - Built for the JanitorAI roleplay community
+- Inspired by the JanitorAI Chat Downloader extension
 - Part of the **Botwaffle** suite of character management tools
 
 ---
 
 ## Contact
 
-- **Website**: https://botwaffle.io
 - **GitHub**: https://github.com/Fablestarexpanse/botwaffle-character-nexus
 - **Issues**: https://github.com/Fablestarexpanse/botwaffle-character-nexus/issues
-- **Security**: security@botwaffle.io
 
 ---
 
-**Made with ❤️ for the roleplay community**
+**Made with 💜 for the roleplay community**
 
 *Privacy-first. Local-only. Open source.*

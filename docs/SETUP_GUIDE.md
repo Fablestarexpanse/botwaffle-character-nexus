@@ -49,6 +49,43 @@ That's it! You should now have both servers running.
 
 ---
 
+## Browser Extension Setup (For Chat Capture)
+
+To capture chats from JanitorAI.com, you'll need to install the browser extension:
+
+### Chrome/Edge
+
+1. Open `chrome://extensions/` (Chrome) or `edge://extensions/` (Edge)
+2. Enable **Developer mode** (toggle in top-right corner)
+3. Click **Load unpacked**
+4. Navigate to and select the `browser-extension` folder from your project:
+   ```
+   /path/to/botwaffle-character-nexus/browser-extension
+   ```
+5. The extension should now appear in your extensions list
+
+### Firefox
+
+1. Open `about:debugging#/runtime/this-firefox`
+2. Click **Load Temporary Add-on...**
+3. Navigate to the `browser-extension` folder
+4. Select the `manifest.json` file
+5. The extension will be loaded temporarily (valid until Firefox restarts)
+
+**Note**: For permanent installation in Firefox, the extension would need to be packaged and signed.
+
+### Using the Extension
+
+1. **Start Botwaffle**: Ensure both backend and frontend are running
+2. **Visit JanitorAI**: Navigate to https://janitorai.com and open any chat
+3. **Capture Messages**: The extension automatically captures messages as they load
+4. **Send to Botwaffle**: Click the purple "Send to Botwaffle" button (bottom-right)
+5. **View in Botwaffle**: Open http://localhost:5173 and click the "Chats" tab
+
+See [browser-extension/README.md](../browser-extension/README.md) for detailed usage instructions.
+
+---
+
 ## Detailed Setup Instructions
 
 ### Step 1: Clone Repository
@@ -518,6 +555,6 @@ MIT License - See [LICENSE](../LICENSE) file for details.
 ---
 
 **Last Updated**: 2025-11-16
-**Version**: 0.1.0
+**Version**: 1.1.0
 
 **Happy coding!** 🎉
