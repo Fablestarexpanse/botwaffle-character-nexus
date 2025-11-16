@@ -15,6 +15,7 @@ import { logInfo, logError } from './utils/logger.js';
 
 // Import routes
 import characterRoutes from './routes/characters.js';
+import importRoutes from './routes/import.js';
 
 const app = express();
 
@@ -65,6 +66,9 @@ app.get('/api/health', (req, res) => {
 
 // Character routes
 app.use('/api/characters', characterRoutes);
+
+// Import routes
+app.use('/api/import', importRoutes);
 
 // Placeholder routes (to be implemented)
 app.get('/api/groups', (req, res) => {
