@@ -2,7 +2,7 @@
 
 > **Privacy-first, local character management for JanitorAI bots**
 
-A ComfyUI-inspired tool for organizing and managing JanitorAI character profiles. Import, organize hierarchically, and manage your roleplay characters with complete privacy—all data stored locally, no cloud required.
+A powerful tool for organizing and managing JanitorAI character profiles. Import, organize hierarchically, and manage your roleplay characters with complete privacy—all data stored locally, no cloud required.
 
 ![Version](https://img.shields.io/badge/version-0.1.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -17,7 +17,7 @@ A ComfyUI-inspired tool for organizing and managing JanitorAI character profiles
 ✅ **Local-First Privacy** - All data stored on your machine (SQLite + local images)
 ✅ **Smart Tags & Search** - Filter by tags, universe, content rating, name
 ✅ **Relationship Mapping** - Track character relationships and connections
-✅ **Dark Theme UI** - ComfyUI-inspired design with Tailwind CSS
+✅ **Dark Theme UI** - Modern dark design with Tailwind CSS
 ✅ **Security Built-In** - Input validation, HTML sanitization, EXIF stripping
 ✅ **Open Source** - MIT License, self-hostable
 
@@ -297,7 +297,6 @@ MIT License - see [LICENSE](./LICENSE) for details.
 
 ## Acknowledgments
 
-- Inspired by [ComfyUI LoRA Manager](https://github.com/ltdrdata/ComfyUI-Manager) design
 - Built for the JanitorAI roleplay community
 - Part of the **Botwaffle** suite of character management tools
 

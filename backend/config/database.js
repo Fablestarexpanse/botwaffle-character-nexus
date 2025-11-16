@@ -1,7 +1,11 @@
 import sqlite3 from 'sqlite3';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import config from './environment.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const { verbose } = sqlite3;
 const sqlite = verbose();
@@ -49,7 +53,27 @@ export const initDatabase = () => {
         }
 
         console.log('✅ Foreign keys enabled');
-        resolve(db);
+
+        // Run schema initialization
+        const schemaPath = path.resolve(__dirname, '../db/schema.sql');
+
+        try {
+          const schema = fs.readFileSync(schemaPath, 'utf8');
+
+          db.exec(schema, (schemaErr) => {
+            if (schemaErr) {
+              console.error('❌ Error running schema:', schemaErr.message);
+              reject(schemaErr);
+              return;
+            }
+
+            console.log('✅ Database schema initialized');
+            resolve(db);
+          });
+        } catch (readErr) {
+          console.error('❌ Error reading schema file:', readErr.message);
+          reject(readErr);
+        }
       });
     });
   });

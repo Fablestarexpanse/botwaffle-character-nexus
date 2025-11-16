@@ -13,6 +13,10 @@ import { initDatabase } from './config/database.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { logInfo, logError } from './utils/logger.js';
 
+// Import routes
+import characterRoutes from './routes/characters.js';
+import importRoutes from './routes/import.js';
+
 const app = express();
 
 // ===== SECURITY MIDDLEWARE =====
@@ -60,11 +64,13 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Placeholder routes (to be implemented)
-app.get('/api/characters', (req, res) => {
-  res.json({ data: [], total: 0, message: 'Character routes not yet implemented' });
-});
+// Character routes
+app.use('/api/characters', characterRoutes);
 
+// Import routes
+app.use('/api/import', importRoutes);
+
+// Placeholder routes (to be implemented)
 app.get('/api/groups', (req, res) => {
   res.json({ data: [], total: 0, message: 'Group routes not yet implemented' });
 });
