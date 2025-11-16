@@ -5,8 +5,6 @@
  * Run with: node debug-janitorai.js
  */
 
-import puppeteer from 'puppeteer';
-
 const url = process.argv[2] || 'https://janitorai.com/characters/e334f2ea-755d-43e0-911b-15c19dc98817_character-ronan-voss-x-black-ops';
 
 console.log('🔍 Inspecting JanitorAI page:', url);
@@ -15,7 +13,10 @@ console.log('━━━━━━━━━━━━━━━━━━━━━━�
 (async () => {
   let browser;
   try {
-    browser = await puppeteer.launch({
+    // Dynamic import
+    const puppeteer = await import('puppeteer');
+
+    browser = await puppeteer.default.launch({
       headless: 'new',
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
