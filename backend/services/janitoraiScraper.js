@@ -123,8 +123,12 @@ export const scrapeJanitorAI = async (url) => {
       };
 
       // Try multiple selectors for character name
-      const name = getText('h1') ||
+      // JanitorAI uses h2 for character names
+      const name = getText('h2') ||
+                   getText('h1') ||
                    getText('[data-character-name]') ||
+                   debug.h2s[0] ||
+                   debug.metaTitle ||
                    debug.metaOgTitle ||
                    debug.h1s[0] ||
                    'Unknown Character';
@@ -135,12 +139,36 @@ export const scrapeJanitorAI = async (url) => {
                   debug.metaOgDescription ||
                   '';
 
-      // Image from meta tags or first image
-      const imageUrl = getAttribute('meta[property="og:image"]', 'content') ||
-                      getAttribute('img[data-character-image]', 'src') ||
-                      getAttribute('.character-image img', 'src') ||
-                      debug.firstImage ||
-                      '';
+      // Find character image (filter out logos and small images)
+      let imageUrl = '';
+
+      // Try meta tags first
+      imageUrl = getAttribute('meta[property="og:image"]', 'content') ||
+                 getAttribute('img[data-character-image]', 'src') ||
+                 getAttribute('.character-image img', 'src');
+
+      // If no image found via meta/special selectors, find largest suitable image
+      if (!imageUrl) {
+        const images = Array.from(document.querySelectorAll('img'))
+          .map(img => ({
+            src: img.src,
+            width: img.naturalWidth || img.width || 0,
+            height: img.naturalHeight || img.height || 0,
+          }))
+          .filter(img => {
+            const url = img.src.toLowerCase();
+            // Filter out logos, icons, and small images
+            const isLogo = url.includes('logo') || url.includes('icon');
+            const isSvg = url.endsWith('.svg');
+            const isTooSmall = img.width < 100 || img.height < 100;
+            return !isLogo && !isSvg && !isTooSmall && img.src.startsWith('http');
+          })
+          .sort((a, b) => (b.width * b.height) - (a.width * a.height)); // Sort by area (largest first)
+
+        if (images.length > 0) {
+          imageUrl = images[0].src;
+        }
+      }
 
       const data = {
         name,
